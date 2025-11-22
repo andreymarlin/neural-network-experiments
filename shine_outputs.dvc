@@ -1,0 +1,6 @@
+outs:
+- md5: 7d5a70b8374c52a274efb4fa8855fd5b.dir
+  size: 207084991
+  nfiles: 7
+  hash: md5
+  path: shine_outputs
