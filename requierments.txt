@@ -1,0 +1,8 @@
+sentence-transformers
+bert-score
+mlflow
+dagshub
+dvc
+dvc-s3
+pandas
+scikit-learn
