@@ -1,0 +1,11 @@
+route:
+  receiver: telegram
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token: "8206133908:AAH-b74AMCoXRAGo24ihGS9PZjtWEep3Zv4"
+        chat_id: 1575883520
+        message: |
+          🚨 NSU AI Alert 🚨
+          {{ .CommonAnnotations.summary }}

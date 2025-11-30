@@ -1,0 +1,8 @@
+services:
+  app:
+    build: .
+    container_name: ahsan_similarity_app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ../models/labse_ahsan_baseline:/app/models/labse_ahsan_baseline

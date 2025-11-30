@@ -1,0 +1,6 @@
+streamlit
+sentence-transformers
+torch
+bert-score
+prometheus_client
+numpy

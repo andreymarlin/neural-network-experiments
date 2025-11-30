@@ -1,0 +1,75 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "title": "Similarity Requests per Minute",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "rate(similarity_requests_total[1m])",
+          "legendFormat": "requests/min"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PROM_DS"
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "title": "Average Latency (seconds)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "rate(similarity_latency_seconds_sum[5m]) / rate(similarity_latency_seconds_count[5m])",
+          "legendFormat": "avg"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PROM_DS"
+      }
+    },
+    {
+      "title": "Latency Histogram",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(similarity_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(similarity_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PROM_DS"
+      }
+    },
+    {
+      "title": "Cosine Similarity Logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "LOKI_DS"
+      },
+      "targets": [
+        {
+          "expr": "{container=\"ahsan_similarity_app\"}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 30,
+  "title": "Similarity App Monitoring",
+  "uid": "similarity-monitor"
+}

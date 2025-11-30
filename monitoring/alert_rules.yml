@@ -1,0 +1,35 @@
+groups:
+  - name: nsu_ai_alerts
+    rules:
+
+      - alert: AppDown
+        expr: up{job="streamlit_app"} == 0
+        for: 20s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Streamlit App is DOWN"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(similarity_latency_seconds_bucket[2m])) > 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: " High model latency (>2s)"
+
+      - alert: HighErrorRate
+        expr: increase(similarity_request_errors_total[1m]) > 5
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: " Many similarity errors happening"
+
+      - alert: TrafficSpike
+        expr: increase(similarity_requests_total[30s]) > 40
+        for: 10s
+        labels:
+          severity: info
+        annotations:
+          summary: " Traffic spike detected"
