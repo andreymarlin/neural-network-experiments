@@ -143,7 +143,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+.dvc
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -210,3 +210,11 @@ tapaco_paraphrases_dataset.csv
 train.csv
 val.csv
 test.csv
+
+
+app/models/
+models/
+
+.DS_Store
+
+grafana/grafana.db

@@ -1,3 +1,0 @@
-Device: mps
-Pairs evaluated: 2000
-BERTScore_F1: 0.9588662385940552

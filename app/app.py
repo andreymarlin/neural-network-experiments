@@ -1,42 +1,60 @@
+###############################################
+# PROMETHEUS METRICS + STREAMLIT + LaBSE MODEL
+###############################################
+
+import threading
+import time
+
 import streamlit as st
 from sentence_transformers import SentenceTransformer, util
 from bert_score import score
-import torch
-import numpy as np
-import time
+
+# Prometheus Monitoring
+from prometheus_client import start_http_server, Counter, Histogram
+
 
 # ===================================================
-# PROMETHEUS MONITORING
+# PROMETHEUS METRICS
 # ===================================================
-from prometheus_client import Counter, Histogram, start_http_server
-
-# Metrics
 REQUEST_COUNT = Counter(
-    "similarity_requests_total",
-    "Total number of similarity computations"
+    'similarity_requests_total',
+    'Total number of similarity requests',
+    registry=None
+)
+
+REQUEST_ERRORS = Counter(
+    "similarity_request_errors_total",
+    "Total number of failed similarity computations",
+    registry=None
 )
 
 REQUEST_LATENCY = Histogram(
     "similarity_latency_seconds",
-    "Time spent computing similarity"
+    "Time spent computing similarity",
+    registry=None
 )
 
-# Start Prometheus metrics server at :8000/metrics
-start_http_server(8000)
+
+# Start metrics server at :8000 ONLY ONCE
+def start_metrics_server():
+    start_http_server(8000)
+
+threading.Thread(target=start_metrics_server, daemon=True).start()
 
 
 # ===================================================
-# PAGE CONFIG
+# STREAMLIT APP CONFIG
 # ===================================================
+
 st.set_page_config(
     page_title="NSU AI • Paraphrase Similarity",
     page_icon="🤖",
     layout="wide"
 )
 
-# ===================================================
-# CUSTOM CSS – Neon + Glassmorphism + Dark Theme
-# ===================================================
+# -------------------------
+# UI Styling (Neon + Glass)
+# -------------------------
 st.markdown("""
 <style>
 
@@ -60,14 +78,13 @@ body {
     margin-bottom: 40px;
 }
 
-/* Glass card */
 .glass-card {
     background: rgba(255,255,255,0.05);
     padding: 25px;
     border-radius: 20px;
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255,255,255,0.2);
-    box-shadow: 0px 4px 30px rgba(0, 255, 200, 0.1);
+    box-shadow: 0px 4px 30px rgba(0,255,200,0.1);
 }
 
 .similarity-score {
@@ -89,58 +106,54 @@ body {
 
 
 # ===================================================
-# MODEL PATHS
+# MODEL LOADING
 # ===================================================
+
 MODEL_PATHS = {
     "LaBSE (Self-hosted)": "/app/models/labse_ahsan_baseline",
 }
 
-
-# ===================================================
-# LOAD MODEL
-# ===================================================
 @st.cache_resource
 def load_model(path):
-    with st.spinner("⚡ Loading selected model... please wait..."):
-        model = SentenceTransformer(path)
-    return model
+    with st.spinner("⚡ Loading selected model... Please wait..."):
+        return SentenceTransformer(path)
 
 
 # ===================================================
 # UI HEADER
 # ===================================================
+
 st.markdown("<h1 class='main-title'>NSU AI • Semantic Similarity App</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Powered by your <b>self-hosted</b> LaBSE model • Modern UI</p>", unsafe_allow_html=True)
 
 
 # ===================================================
-# SIDEBAR – Settings
+# SIDEBAR SETTINGS
 # ===================================================
+
 with st.sidebar:
     st.header("⚙️ Settings")
 
-    model_choice = st.selectbox(
-        "Choose Model",
-        list(MODEL_PATHS.keys())
-    )
+    model_choice = st.selectbox("Choose Model", list(MODEL_PATHS.keys()))
+    enable_bertscore = st.checkbox("Compute BERTScore F1 (slower)", value=True)
 
-    enable_bertscore = st.checkbox("Compute BERTScore F1", value=True)
-
-    st.info(" You are using a **self-hosted** model. No HuggingFace download required.")
-
+    st.info("You are using a fully self-hosted LaBSE model. Offline mode enabled.")
 
 model = load_model(MODEL_PATHS[model_choice])
 
 
 # ===================================================
-# INPUT PANEL
+# INPUT BOXES
 # ===================================================
+
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown("### Enter Text for Similarity Comparison")
 
 col1, col2 = st.columns(2)
+
 with col1:
     sentence1 = st.text_area("🔹 Sentence 1", height=150)
+
 with col2:
     sentence2 = st.text_area("🔸 Sentence 2", height=150)
 
@@ -150,26 +163,33 @@ st.markdown("</div>", unsafe_allow_html=True)
 # ===================================================
 # COMPUTE SIMILARITY
 # ===================================================
+
 if st.button("Compute Similarity", use_container_width=True):
 
     if not sentence1 or not sentence2:
         st.error("Please enter both sentences.")
-    else:
-        
-        REQUEST_COUNT.inc()
-        start_time = time.time()
+        REQUEST_ERRORS.inc()
 
-        with st.spinner("🔍 Computing embeddings..."):
-            emb1 = model.encode(sentence1, convert_to_tensor=True)
-            emb2 = model.encode(sentence2, convert_to_tensor=True)
+    else:
+
+        REQUEST_COUNT.inc()
+        t0 = time.time()
+
+        try:
+            with st.spinner("🔍 Computing embeddings..."):
+                emb1 = model.encode(sentence1, convert_to_tensor=True)
+                emb2 = model.encode(sentence2, convert_to_tensor=True)
+
             cos_sim = util.cos_sim(emb1, emb2)[0][0].item()
 
-        # PROMETHEUS: latency
-        REQUEST_LATENCY.observe(time.time() - start_time)
+        except:
+            REQUEST_ERRORS.inc()
+            raise
 
-        # -------------------------
-        # COSINE SIMILARITY
-        # -------------------------
+        finally:
+            REQUEST_LATENCY.observe(time.time() - t0)
+
+        # Display Cosine Similarity
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.markdown("### Cosine Similarity Score")
         st.markdown(f"<p class='similarity-score'>{cos_sim:.4f}</p>", unsafe_allow_html=True)
@@ -183,16 +203,14 @@ if st.button("Compute Similarity", use_container_width=True):
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # -------------------------
-        # OPTIONAL BERTScore F1
-        # -------------------------
+        # Optional BERTScore
         if enable_bertscore:
             with st.spinner("Computing BERTScore..."):
                 P, R, F1 = score([sentence1], [sentence2], lang="en", verbose=False)
                 f1_value = F1.mean().item()
 
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            st.markdown("### BERTScore F1")
+            st.markdown("### BERTScore F1 Score")
             st.markdown(f"<p class='similarity-score'>{f1_value:.4f}</p>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -200,4 +218,5 @@ if st.button("Compute Similarity", use_container_width=True):
 # ===================================================
 # FOOTER
 # ===================================================
-st.markdown("<p class='footer'>Made by Ahsan Shakoor • NSU AI • 2025</p>", unsafe_allow_html=True)
+
+st.markdown("<p class='footer'>Made by <b>Team</b> • NSU AI • 2025</p>", unsafe_allow_html=True)
