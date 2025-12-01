@@ -23,7 +23,7 @@ import mlflow.sklearn
 os.environ["MLFLOW_TRACKING_USERNAME"] = "Shine76225"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "6adedd94750f26726d84f19f85977104fbd3e1c1"
 
-mlflow.set_tracking_uri("https://dagshub.com/Shine76225/neural-network-experiments.mlflow")
+mlflow.set_tracking_uri("https://dagshub.com/andreymarlin/neural-network-experiments.mlflow")
 mlflow.set_experiment("shine_experiment_dev2")
 
 # ---------------------------------------------------
