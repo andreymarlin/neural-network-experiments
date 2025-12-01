@@ -17,8 +17,8 @@ EMBEDDING_DIM = 384
 
 DATA_DIR = "/Users/shinekhantaung/Documents/dcs_project/neural-network-experiments/data"
 TRAIN_FILE = f"{DATA_DIR}/train.csv"
-VAL_FILE = f"{DATA_DIR}/val.csv"
-TEST_FILE = f"{DATA_DIR}/test.csv"
+VAL_FILE   = f"{DATA_DIR}/val.csv"
+TEST_FILE  = f"{DATA_DIR}/test.csv"
 
 OUTPUT_DIR = "shine_outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -28,7 +28,7 @@ print(" SHINE EXPERIMENT START")
 print("==============================\n")
 
 # ---------------------------------------------------
-# ENABLE APPLE SILICON GPU (MPS)
+# ENABLE MPS (Apple Silicon GPU)
 # ---------------------------------------------------
 
 if torch.backends.mps.is_available():
@@ -36,25 +36,70 @@ if torch.backends.mps.is_available():
     print("⚡ Using Apple Silicon GPU (MPS)\n")
 else:
     device = "cpu"
-    print("🖥 Using CPU\n")
+    print(" Using CPU\n")
 
 # ---------------------------------------------------
-# LOAD DATA
+# SMART COLUMN DETECTION + RENAMING
 # ---------------------------------------------------
 
-print(" Loading datasets...")
+def load_and_fix(df, filename="UNKNOWN"):
 
-train_df = pd.read_csv(TRAIN_FILE, sep="\t", header=0)
-val_df = pd.read_csv(VAL_FILE, sep="\t", header=0)
-test_df = pd.read_csv(TEST_FILE, sep="\t", header=0)
+    print("\n----------------------------------")
+    print(f"🔍 Reading file: {filename}")
+    print("Available columns:", list(df.columns))
 
-train_df = train_df.rename(columns={"Text": "sentence1", "Paraphrase": "sentence2"})
-val_df = val_df.rename(columns={"Text": "sentence1", "Paraphrase": "sentence2"})
-test_df = test_df.rename(columns={"Text": "sentence1", "Paraphrase": "sentence2"})
+    # Lowercase mapping
+    col_lower = {c.lower(): c for c in df.columns}
 
-train_df["label"] = 1
-val_df["label"] = 1
-test_df["label"] = 1
+    # Possible input column names
+    s1_candidates = ["text", "sentence1", "original", "source"]
+    s2_candidates = ["paraphrase", "sentence2", "target"]
+
+    s1 = None
+    s2 = None
+
+    # Find sentence1
+    for name in s1_candidates:
+        if name in col_lower:
+            s1 = col_lower[name]
+            break
+
+    # Find sentence2
+    for name in s2_candidates:
+        if name in col_lower:
+            s2 = col_lower[name]
+            break
+
+    # If not found → raise clear error
+    if s1 is None or s2 is None:
+        print("\n❌ ERROR: Could not detect correct columns!")
+        print("Expected possibilities:")
+        print(" sentence1 →", s1_candidates)
+        print(" sentence2 →", s2_candidates)
+        print("\n👉 FIX: Please show the real header using:")
+        print("   head -5", filename)
+        raise ValueError("Column detection failed.")
+
+    print(f"✔ Detected sentence1 = '{s1}'")
+    print(f"✔ Detected sentence2 = '{s2}'")
+
+    # Rename to standard format
+    df = df.rename(columns={s1: "sentence1", s2: "sentence2"})
+    df["label"] = 1  # TAPACO pairs are always paraphrases
+
+    print("----------------------------------\n")
+    return df
+
+# ---------------------------------------------------
+# LOAD DATASETS
+# ---------------------------------------------------
+
+print("📌 Loading datasets...")
+
+train_df = load_and_fix(pd.read_csv(TRAIN_FILE, sep=None, engine="python"), TRAIN_FILE)
+val_df   = load_and_fix(pd.read_csv(VAL_FILE,   sep=None, engine="python"), VAL_FILE)
+test_df  = load_and_fix(pd.read_csv(TEST_FILE,  sep=None, engine="python"), TEST_FILE)
+
 
 print(f"Train size: {len(train_df)} rows")
 print(f"Val size:   {len(val_df)} rows")
@@ -64,17 +109,17 @@ print(f"Test size:  {len(test_df)} rows\n")
 # LOAD MODEL
 # ---------------------------------------------------
 
-print(f"Loading model: {MODEL_NAME}\n")
+print(f"📌 Loading model: {MODEL_NAME}\n")
 model = SentenceTransformer(MODEL_NAME)
 model.to(device)
 
 # ---------------------------------------------------
-# OPTIMIZED EMBEDDING (BATCHED + GPU + TQDM)
+# FAST EMBEDDING FUNCTION
 # ---------------------------------------------------
 
 def embed_fast(df, split, batch_size=256):
-    print(f"\n Embedding {split.upper()} (batch_size={batch_size})")
-    
+    print(f"\n📌 Embedding {split.upper()} (batch_size={batch_size})")
+
     sentences1 = df["sentence1"].tolist()
     sentences2 = df["sentence2"].tolist()
 
@@ -98,25 +143,26 @@ def embed_fast(df, split, batch_size=256):
     torch.save(s1_final, f"{OUTPUT_DIR}/{split}_embed_s1.pt")
     torch.save(s2_final, f"{OUTPUT_DIR}/{split}_embed_s2.pt")
 
-    print(f"Saved {split} embeddings → {OUTPUT_DIR}/")
+    print(f"✔ Saved {split} embeddings → {OUTPUT_DIR}/")
     return s1_final, s2_final
 
 
 train_s1, train_s2 = embed_fast(train_df, "train")
-val_s1, val_s2 = embed_fast(val_df, "val")
-test_s1, test_s2 = embed_fast(test_df, "test")
+val_s1, val_s2     = embed_fast(val_df, "val")
+test_s1, test_s2   = embed_fast(test_df, "test")
 
 # ---------------------------------------------------
 # METRICS
 # ---------------------------------------------------
 
 def compute_metrics(e1, e2):
-    print("\n Computing cosine similarity metrics...")
+    print("\n📌 Computing cosine similarity metrics...")
+
     cosine_scores = util.cos_sim(e1, e2).diag().numpy()
 
     threshold = 0.7
-    labels = np.ones(len(cosine_scores))
     preds = (cosine_scores >= threshold).astype(int)
+    labels = np.ones(len(preds))  # all pairs are paraphrases
 
     return {
         "threshold": threshold,
@@ -129,11 +175,11 @@ def compute_metrics(e1, e2):
     }
 
 train_metrics = compute_metrics(train_s1, train_s2)
-val_metrics = compute_metrics(val_s1, val_s2)
-test_metrics = compute_metrics(test_s1, test_s2)
+val_metrics   = compute_metrics(val_s1, val_s2)
+test_metrics  = compute_metrics(test_s1, test_s2)
 
 # ---------------------------------------------------
-# SAVE RESULTS
+# SAVE METRICS
 # ---------------------------------------------------
 
 results = {
@@ -150,6 +196,6 @@ with open(f"{OUTPUT_DIR}/metrics.json", "w") as f:
     json.dump(results, f, indent=4)
 
 print("\n==============================")
-print(" Results saved → shine_outputs/metrics.json")
-print(" SHINE EXPERIMENT FINISHED!")
+print("✔ Results saved → shine_outputs/metrics.json")
+print("✔ SHINE EXPERIMENT FINISHED!")
 print("==============================\n")
