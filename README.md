@@ -59,6 +59,8 @@ Triggered when:
 neural-network-experiments/
 │
 ├── app/
+    ├── models/
+│       └── labse_ahsan_baseline/    # Self-hosted model
 │   ├── app.py                   # Streamlit UI + Metrics
 │   ├── Dockerfile               # Streamlit service build
 │   ├── requirements.txt
@@ -72,8 +74,7 @@ neural-network-experiments/
 │   ├── loki/ (optional)
 │   └── ...
 │
-├── models/
-│   └── labse_ahsan_baseline/    # Self-hosted model
+
 │
 ├── experiments/
 │   ├── labse_bertscore_baseline.py

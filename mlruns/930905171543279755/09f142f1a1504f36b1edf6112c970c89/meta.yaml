@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/ask/NSU/class/DSC/neural-network-experiments/mlruns/930905171543279755/09f142f1a1504f36b1edf6112c970c89/artifacts
+end_time: 1764596442602
+entry_point_name: ''
+experiment_id: '930905171543279755'
+lifecycle_stage: active
+run_id: 09f142f1a1504f36b1edf6112c970c89
+run_name: labse_ahsan_full_pipeline
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764596442154
+status: 3
+tags: []
+user_id: ask

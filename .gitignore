@@ -211,8 +211,9 @@ train.csv
 val.csv
 test.csv
 
-
-app/models/
+app/models
+app/models/labse_ahsan_baseline.zip
+app/models/labse_ahsan_baseline/model.safetensors
 models/
 
 .DS_Store
