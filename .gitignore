@@ -218,3 +218,6 @@ models/
 .DS_Store
 
 grafana/grafana.db
+models/
+app/models/
+*.zip
