@@ -1,0 +1,87 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite
+*.db
+*.db-journal
+
+# -------------------------
+# Virtual environments
+# -------------------------
+env/
+venv/
+.sbert_env/
+
+# -------------------------
+# Jupyter
+# -------------------------
+.ipynb_checkpoints/
+
+# -------------------------
+# OS / Editor files
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Model Files (avoid pushing large models)
+# -------------------------
+app/
+artifacts/
+*.pkl
+*.bin
+*.pt
+
+# -------------------------
+# Data Files
+# -------------------------
+data/
+datasets/
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+
+# (If you want to push small metadata files, remove above)
+
+# -------------------------
+# Docker-generated files
+# -------------------------
+grafana_data/
+loki/
+prometheus/
+alertmanager/
+*/storage/
+*/data/
+*.yml
+*.dvc
+*.txt
+# -------------------------
+# Logs collected for Loki
+# -------------------------
+/var/log/app/
+
+# -------------------------
+# Node (if you later add frontend)
+# -------------------------
+node_modules/
+dist/
+
+# -------------------------
+# Ignore local dev configs
+# -------------------------
+.env
+.env.*
+*.secret
+
+# -------------------------
+# Anything user-specific
+# -------------------------
+*.swp
+Dockerfile
+models/
